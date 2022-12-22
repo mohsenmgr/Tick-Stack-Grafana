@@ -1,0 +1,77 @@
+version: '3.7'
+services:
+    influxdb:
+        image: "influxdb:latest"
+        hostname: "monitoring_influxdb"
+        container_name: monitoring_influxdb
+        ports:
+            - "8086:8086"
+        volumes:
+            - "influx-data:/var/lib/influxdb"
+        networks:
+            - monitornet
+    chronograf:
+        image: "chronograf:latest"
+        hostname: "monitoring_chronograf"
+        container_name: monitoring_chronograf
+        ports:
+            - "8888:8888"
+        volumes:
+            - "chronograf-data:/var/lib/chronograf"
+        networks:
+            - monitornet
+    telegraf:
+        image: "telegraf:latest"
+        hostname: "monitoring_telegraf"
+        container_name: monitoring_telegraf
+        volumes:
+            - type: bind
+              source: ./telegraf.conf
+              target: /etc/telegraf/telegraf.conf
+        networks:
+            - monitornet
+    kapacitor:
+        image: "kapacitor:latest"
+        hostname: "monitoring_kapacitor"
+        container_name: "monitoring_kapacitor"
+        volumes:
+            - "kapacitor-data:/var/lib/kapacitor"
+            - type: bind
+              source: ./kapacitor.conf
+              target: /etc/kapacitor/kapacitor.conf
+        environment:
+            KAPACITOR_HOSTNAME: kapacitor
+            KAPACITOR_INFLUXDB_0_URLS_0: "http://influxdb:8086"
+            KAPACITOR_INFLUXDB_ENABLED: "true"
+            KAPACITOR_INFLUXDB_NAME: "monitoring"
+            KAPACITOR_INFLUXDB_USERNAME: "admin"
+            KAPACITOR_INFLUXDB_PASSWORD: "admin1234"
+            KAPACITOR_INFLUXDB_STARTUP_TIMEOUT: "5m"
+            KAPACITOR_INFLUXDB_SUBSCRIPTION_MODE: "server"
+            KAPACITOR_INFLUXDB_SUBSCRIPTION_PROTOCOL: "http"
+            KAPACITOR_INFLUXDB_KAPACITOR_HOSTNAME: "kapacitor"
+        ports:
+            - "9092:9092"
+        networks:
+            - monitornet
+
+    grafana:
+        image: grafana/grafana:latest
+        ports:
+            - 3000:3000
+        networks:
+            - monitornet
+        restart: unless-stopped
+        volumes:
+            - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
+            - grafana-data:/var/lib/grafana
+
+volumes:
+    chronograf-data:
+    influx-data:
+    kapacitor-data:
+    grafana-data:
+
+
+networks:
+    monitornet:
